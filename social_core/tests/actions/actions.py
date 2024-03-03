@@ -53,7 +53,6 @@ class BaseActionTest(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         self.strategy = None
-        self.backend = None
         super().__init__(*args, **kwargs)
 
     def setUp(self):
@@ -64,9 +63,7 @@ class BaseActionTest(unittest.TestCase):
         TestAssociation.reset_cache()
         Backend = module_member("social_core.backends.github.GithubOAuth2")
         self.strategy = self.strategy or TestStrategy(TestStorage)
-        self.backend = self.backend or Backend(
-            self.strategy, redirect_uri="/complete/github"
-        )
+        self.backend = Backend(self.strategy, redirect_uri="/complete/github")
         self.user = None
 
     def tearDown(self):

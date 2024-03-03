@@ -1,5 +1,7 @@
 from urllib.parse import quote
 
+from rest_framework.authtoken.models import Token
+
 from .utils import (
     partial_pipeline_data,
     sanitize_redirect,
@@ -9,9 +11,11 @@ from .utils import (
 )
 
 
-def do_auth(backend, redirect_name="next"):
+def do_auth(backend, redirect_name="next", **kwargs):
     # Save any defined next value into session
     data = backend.strategy.request_data(merge=False)
+
+    print(kwargs['app'])
 
     # Save extra data into session.
     for field_name in backend.setting("FIELDS_STORED_IN_SESSION", []):
@@ -31,11 +35,16 @@ def do_auth(backend, redirect_name="next"):
         backend.strategy.session_set(
             redirect_name, redirect_uri or backend.setting("LOGIN_REDIRECT_URL")
         )
+    # backend.redirect_uri = f"{backend.redirect_uri.rstrip('/')}?app={kwargs['app']}"
+    backend.strategy.session_set('app', kwargs['app'])
+    print("one",backend.strategy.session.__dict__)
     return backend.start()
 
 
 def do_complete(backend, login, user=None, redirect_name="next", *args, **kwargs):
     data = backend.strategy.request_data()
+
+    print("two",backend.strategy.session.__dict__)
 
     is_authenticated = user_is_authenticated(user)
     user = user if is_authenticated else None
@@ -46,7 +55,7 @@ def do_complete(backend, login, user=None, redirect_name="next", *args, **kwargs
         # clean partial data after usage
         backend.strategy.clean_partial_pipeline(partial.token)
     else:
-        user = backend.complete(user=user, redirect_name=redirect_name, *args, **kwargs)
+        user = backend.complete(user=user, *args, **kwargs)
 
     # pop redirect value before the session is trashed on login(), but after
     # the pipeline so that the pipeline can change the redirect if needed
@@ -111,7 +120,9 @@ def do_complete(backend, login, user=None, redirect_name="next", *args, **kwargs
         url = sanitize_redirect(allowed_hosts, url) or backend.setting(
             "LOGIN_REDIRECT_URL"
         )
-    return backend.strategy.redirect(url)
+
+    token, created = Token.objects.get_or_create(user=user)
+    return backend.strategy.redirect(f'{url}?token={token.key}')
 
 
 def do_disconnect(

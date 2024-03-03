@@ -6,8 +6,8 @@ import sys
 from calendar import timegm
 from urllib.parse import urlparse
 
-import jwt
 from httpretty import HTTPretty
+from jose import jwt
 
 from social_core.backends.open_id_connect import OpenIdConnectAuth
 
@@ -150,16 +150,13 @@ class OpenIdConnectTestMixin:
             nonce,
             issuer,
         )
-        # calc at_hash
-        id_token["at_hash"] = OpenIdConnectAuth.calc_at_hash("foobar", "RS256")
 
         body["id_token"] = jwt.encode(
-            id_token,
-            key=jwt.PyJWK(
-                dict(self.key, iat=timegm(issue_datetime.utctimetuple()), nonce=nonce)
-            ).key,
+            claims=id_token,
+            key=dict(self.key, iat=timegm(issue_datetime.utctimetuple()), nonce=nonce),
             algorithm="RS256",
-            headers=dict(kid=kid) if kid else None,
+            access_token="foobar",
+            headers=dict(kid=kid),
         )
 
         if tamper_message:
